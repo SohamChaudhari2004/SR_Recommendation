@@ -9,10 +9,10 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S'
 )
-logger = logging.getLogger(_name_)
+logger = logging.getLogger(__name__)
 
 # Create Flask app
-app = Flask(_name_)
+app = Flask(__name__)
 
 # Global recommender instance
 recommender = None
@@ -69,7 +69,7 @@ def health_check():
         "status": "ok",
         "message": "Service is running",
         "stories_count": len(recommender.df) if recommender.df is not None else 0,
-        "model_type": type(recommender)._name_
+        "model_type": type(recommender).__name__
     }), 200
 
 
@@ -138,7 +138,7 @@ def run_api(pickle_file_path=None, csv_file_path=None, host='0.0.0.0', port=5000
         logger.error("Failed to initialize recommendation system. API not started.")
 
 
-if _name_ == "_main_":
+if __name__ == "__main__":
     # File paths - modify these to match your setup
     pickle_file_path = 'story_recommender_model.pkl'
     csv_file_path = 'Stories  - Sheet1 (1).csv'  # Fallback if pickle loading fails
