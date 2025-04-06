@@ -9,19 +9,30 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S'
 )
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(_name_)
 
 # Create Flask app
-app = Flask(__name__)
+app = Flask(_name_)
 
 # Global recommender instance
 recommender = None
 
 
-@app.route('/api/recommend', methods=['GET'])
+@app.route('/api/recommend', methods=['GET', 'POST'])
 def recommend():
     """API endpoint to get story recommendations."""
-    query = request.args.get('query', 'The postcard')
+    if request.method == 'POST':
+        # Handle POST request with JSON data
+        if request.is_json:
+            data = request.get_json()
+            query = data.get('query', '')
+        # Handle POST request with form data
+        else:
+            query = request.form.get('query', '')
+    else:
+        # Keep the original GET parameter handling as fallback
+        query = request.args.get('query', '')
+
     top_n = int(request.args.get('top_n', 5))
 
     if not query:
@@ -58,7 +69,7 @@ def health_check():
         "status": "ok",
         "message": "Service is running",
         "stories_count": len(recommender.df) if recommender.df is not None else 0,
-        "model_type": type(recommender).__name__
+        "model_type": type(recommender)._name_
     }), 200
 
 
@@ -127,7 +138,7 @@ def run_api(pickle_file_path=None, csv_file_path=None, host='0.0.0.0', port=5000
         logger.error("Failed to initialize recommendation system. API not started.")
 
 
-if __name__ == "__main__":
+if _name_ == "_main_":
     # File paths - modify these to match your setup
     pickle_file_path = 'story_recommender_model.pkl'
     csv_file_path = 'Stories  - Sheet1 (1).csv'  # Fallback if pickle loading fails
