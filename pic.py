@@ -10,7 +10,7 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S'
 )
-logger = logging.getLogger(___name___)
+logger = logging.getLogger(__name__)
 
 
 def train_and_save_model(csv_file_path, pickle_file_path):
@@ -37,7 +37,7 @@ def train_and_save_model(csv_file_path, pickle_file_path):
     return recommender
 
 
-if ___name___ == "___main___":
+if __name__ == "__main__":
     # File paths
     csv_file_path = 'Stories  - Sheet1 (1).csv'
     pickle_file_path = 'story_recommender_model.pkl'
