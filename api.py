@@ -138,6 +138,73 @@ def run_api(pickle_file_path=None, csv_file_path=None, host='0.0.0.0', port=5000
         logger.error("Failed to initialize recommendation system. API not started.")
 
 
+@app.route('/api/todays_recommendations', methods=['GET', 'POST'])
+def todays_recommendations():
+    """API endpoint to get today's story recommendations based on user history."""
+    if request.method == 'POST':
+        if request.is_json:
+            data = request.get_json()
+            user_categories = data.get('categories', [])
+        else:
+            user_categories = request.form.getlist('categories')
+    else:
+        # Handle GET request
+        user_categories = request.args.getlist('categories')
+
+    top_n = int(request.args.get('top_n', 10))
+
+    if not user_categories:
+        return jsonify({
+            "status": "error",
+            "message": "No categories provided",
+            "recommendations": []
+        }), 400
+
+    if not recommender:
+        return jsonify({
+            "status": "error",
+            "message": "Recommendation system not initialized",
+            "recommendations": []
+        }), 500
+
+    # Get recommendations
+    recommendations = recommender.get_todays_recommendations(user_categories, top_n)
+
+    if 'Error' in recommendations.columns:
+        return jsonify({
+            "status": "error",
+            "message": recommendations['Error'].iloc[0],
+            "recommendations": []
+        }), 400
+
+    # Format results
+    result = {
+        "status": "success",
+        "user_categories": user_categories,
+        "recommendations": []
+    }
+
+    for _, row in recommendations.iterrows():
+        rec = {
+            "id": row['ID'],
+            "title": row['Title'],
+            "category": row['Category'],
+            "subcategory": row['Subcategory'],
+            "score": float(row['Score'])
+        }
+        result["recommendations"].append(rec)
+
+    return jsonify(result), 200
+
+@app.route('/api/reload', methods=['POST'])
+def reload_model():
+    global recommender
+    pickle_file_path = 'story_recommender_model.pkl'
+    if os.path.exists(pickle_file_path):
+        if load_recommender(pickle_file_path):
+            return jsonify({"status": "success", "message": "Model reloaded"}), 200
+    return jsonify({"status": "error", "message": "Failed to reload model"}), 500
+
 if __name__ == "__main__":
     # File paths - modify these to match your setup
     pickle_file_path = 'story_recommender_model.pkl'

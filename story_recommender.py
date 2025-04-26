@@ -534,14 +534,14 @@ class StoryRecommender:
             "status": "success",
             "query": query,
             "matched_story": closest_title,
-            "matched_story_id": int(self.df.loc[self.indices[closest_title], 'ID']),
+            "matched_story_id": self.df.loc[self.indices[closest_title], 'ID'],
             "recommendations": []
         }
 
         # Add recommendations
         for _, row in recommendations.iterrows():
             rec = {
-                "id": int(row['ID']),
+                "id": row['ID'],
                 "title": row['Title'],
                 "category": row['Category'],
                 "subcategory": row['Subcategory'],
@@ -561,3 +561,64 @@ class StoryRecommender:
         self.compute_similarity_matrix()
 
         logger.info("Recommendation system is ready to use")
+
+    def get_todays_recommendations(self, user_categories, top_n=5):
+        """
+        Generate recommendations based on user's history categories.
+
+        Args:
+            user_categories: List of categories from user's history
+            top_n: Number of recommendations to return
+
+        Returns:
+            DataFrame containing recommended stories
+        """
+        if not user_categories or len(user_categories) == 0:
+            return pd.DataFrame({"Error": ["No user categories provided."]})
+
+        # Initialize scores dictionary to track story scores
+        story_scores = {idx: 0.0 for idx in range(len(self.df))}
+
+        # For each category in user history
+        for category in user_categories:
+            # Find stories that match this category
+            matching_stories = self.df[
+                (self.df['Category'].str.lower() == category.lower()) |
+                (self.df['Subcategory'].str.lower() == category.lower())
+                ]
+
+            if not matching_stories.empty:
+                # For each matching story
+                for idx in matching_stories.index:
+                    # Get content-based recommendations for this story
+                    rec_scores = []
+
+                    if self.cosine_sim is not None:
+                        # Use pre-computed similarity matrix
+                        rec_scores = list(enumerate(self.cosine_sim[idx]))
+                    else:
+                        # Use KNN model
+                        distances, indices = self.knn_model.kneighbors(self.tfidf_matrix[idx].reshape(1, -1))
+                        similarities = 1 - distances.flatten()
+                        rec_scores = list(zip(indices.flatten(), similarities))
+
+                    # Add scores to our running totals, with appropriate weighting
+                    weight = 1.0 / len(user_categories)  # Equal weight for each category
+                    for rec_idx, score in rec_scores:
+                        story_scores[rec_idx] += score * weight
+
+        # Convert to list of tuples and sort by score
+        scored_stories = [(idx, score) for idx, score in story_scores.items()]
+        scored_stories.sort(key=lambda x: x[1], reverse=True)
+
+        # Get top N
+        top_stories = scored_stories[:top_n]
+
+        # Create result DataFrame
+        story_indices = [i[0] for i in top_stories]
+        scores = [i[1] for i in top_stories]
+
+        result = self.df.iloc[story_indices][['ID', 'Title', 'Category', 'Subcategory']].copy()
+        result['Score'] = scores
+
+        return result
